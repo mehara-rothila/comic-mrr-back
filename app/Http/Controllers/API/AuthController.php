@@ -12,51 +12,62 @@ use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
+    /**
+     * Register a new user.
+     */
     public function register(Request $request)
     {
         try {
+            // Validate incoming request
             $validatedData = $request->validate([
                 'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
+                'email' => 'required|string|email|max:255|unique:users,email',
                 'password' => 'required|string|min:8|confirmed',
             ]);
 
+            // Create a new user
             $user = User::create([
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
                 'password' => Hash::make($validatedData['password']),
             ]);
 
+            // Generate an access token
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'message' => 'User registered successfully',
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'user' => $user
+                'user' => $user,
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             Log::error('Registration error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Registration failed',
-                'error' => $e->getMessage()
+                'message' => 'Registration failed due to a server error',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Log in an existing user.
+     */
     public function login(Request $request)
     {
         try {
+            // Validate incoming request
             $request->validate([
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
 
+            // Find user by email
             $user = User::where('email', $request->email)->first();
 
             if (!$user || !Hash::check($request->password, $user->password)) {
@@ -65,94 +76,71 @@ class AuthController extends Controller
                 ]);
             }
 
-            // Delete existing tokens for this user
+            // Revoke previous tokens and generate a new one
             $user->tokens()->delete();
-
             $token = $user->createToken('auth_token')->plainTextToken;
 
             return response()->json([
                 'message' => 'Successfully logged in',
                 'access_token' => $token,
                 'token_type' => 'Bearer',
-                'user' => $user
+                'user' => $user,
             ]);
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'Login failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             Log::error('Login error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Login failed',
-                'error' => $e->getMessage()
+                'message' => 'Login failed due to a server error',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Log out the current user.
+     */
     public function logout(Request $request)
     {
         try {
-            // Log debug information
-            Log::info('Logout attempt', [
-                'user_id' => $request->user()->id ?? 'no user',
-                'token' => $request->bearerToken() ?? 'no token'
-            ]);
-
-            // Check if we have a user and token
-            if (!$request->user() || !$request->bearerToken()) {
-                Log::warning('Logout attempted without valid user or token');
-                return response()->json([
-                    'message' => 'No active session found'
-                ], 401);
-            }
-
-            // Delete the current access token
-            $request->user()->currentAccessToken()->delete();
-
-            return response()->json([
-                'message' => 'Successfully logged out'
-            ]);
-        } catch (\Exception $e) {
-            Log::error('Logout error: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // Clear the token anyway
+            // Ensure the user is authenticated
             if ($request->user()) {
-                try {
-                    $request->user()->tokens()->delete();
-                } catch (\Exception $tokenError) {
-                    Log::error('Error deleting tokens: ' . $tokenError->getMessage());
-                }
+                $request->user()->currentAccessToken()->delete(); // Delete the current token
+                Log::info('User logged out successfully', ['user_id' => $request->user()->id]);
+                return response()->json(['message' => 'Successfully logged out']);
             }
 
+            return response()->json(['message' => 'No active session found'], 401);
+        } catch (\Exception $e) {
+            Log::error('Logout error: ' . $e->getMessage());
             return response()->json([
-                'message' => 'Logout completed with errors',
-                'error' => $e->getMessage()
+                'message' => 'Logout failed due to a server error',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
+    /**
+     * Fetch the authenticated user's details.
+     */
     public function user(Request $request)
     {
         try {
             $user = $request->user();
-            
+
             if (!$user) {
-                return response()->json([
-                    'message' => 'Unauthenticated'
-                ], 401);
+                return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
-            return response()->json([
-                'user' => $user
-            ]);
+            return response()->json(['user' => $user]);
         } catch (\Exception $e) {
             Log::error('User fetch error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error fetching user data',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
