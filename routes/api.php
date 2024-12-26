@@ -3,68 +3,50 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\ComicController;
+use App\Http\Controllers\API\AdminController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
-
-// Test route to check if API is working
-Route::get('/test', function () {
-    return response()->json(['message' => 'API is working!']);
-});
-
-// Public routes
+// Public routes that don't require authentication
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
-
-// Public comic routes
 Route::get('/comics', [ComicController::class, 'index']);
+Route::get('/comics/featured', [ComicController::class, 'featured']);
 Route::get('/comics/{comic}', [ComicController::class, 'show']);
-
-// Protected routes
-Route::middleware('auth:sanctum')->group(function () {
-    // Auth routes
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::get('/user', [AuthController::class, 'user']);
-
-    // Protected comic routes
-    Route::post('/comics', [ComicController::class, 'store']);
-    Route::put('/comics/{comic}', [ComicController::class, 'update']);
-    Route::delete('/comics/{comic}', [ComicController::class, 'destroy']);
-    
-    // Optional: Get comics for authenticated user
-    Route::get('/user/comics', [ComicController::class, 'userComics']);
-});
-
-// Optional: Route for comic categories
 Route::get('/categories', function () {
     return response()->json([
         'categories' => [
-            'Action',
-            'Adventure',
-            'Comedy',
-            'Drama',
-            'Fantasy',
-            'Horror',
-            'Mystery',
-            'Romance',
-            'Sci-Fi',
-            'Slice of Life',
-            'Superhero'
+            'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy',
+            'Horror', 'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Superhero'
         ]
     ]);
 });
 
-// Error handling for undefined routes
+// Routes that require authentication
+Route::middleware('auth:sanctum')->group(function () {
+    // Test route for admin middleware
+    Route::get('/test-admin', function () {
+        return response()->json(['message' => 'Admin middleware is working']);
+    })->middleware(\App\Http\Middleware\AdminMiddleware::class);
+
+    // General authenticated routes
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::get('/user/comics', [ComicController::class, 'userComics']);
+    Route::get('/check-admin', [AuthController::class, 'checkAdmin']);
+
+    // Admin-only routes
+    Route::middleware(\App\Http\Middleware\AdminMiddleware::class)
+        ->prefix('admin')
+        ->group(function () {
+            Route::get('/comics', [AdminController::class, 'index']);
+            Route::get('/stats', [AdminController::class, 'stats']);
+            Route::post('/comics', [AdminController::class, 'storeComic']);
+            Route::put('/comics/{comic}', [AdminController::class, 'updateComic']);
+            Route::delete('/comics/{comic}', [AdminController::class, 'deleteComic']);
+            Route::get('/users', [AdminController::class, 'users']);
+        });
+});
+
+// Fallback route for undefined routes
 Route::fallback(function () {
-    return response()->json([
-        'message' => 'Route not found.'
-    ], 404);
+    return response()->json(['message' => 'Route not found.'], 404);
 });

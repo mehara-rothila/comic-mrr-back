@@ -14,8 +14,12 @@ return new class extends Migration
             $table->text('description');
             $table->string('author');
             $table->string('genre');
-            $table->string('image')->nullable();
+            $table->string('image_url')->nullable();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('category_id')->nullable();
+            $table->decimal('price', 8, 2)->default(0.00);
+            $table->enum('status', ['draft', 'published'])->default('published');
+            $table->boolean('featured')->default(false);
             $table->timestamps();
         });
     }

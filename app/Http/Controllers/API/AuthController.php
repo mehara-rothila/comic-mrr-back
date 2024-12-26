@@ -30,6 +30,7 @@ class AuthController extends Controller
                 'name' => $validatedData['name'],
                 'email' => $validatedData['email'],
                 'password' => Hash::make($validatedData['password']),
+                'is_admin' => false, // Default to regular user
             ]);
 
             // Generate an access token
@@ -40,6 +41,7 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'user' => $user,
+                'is_admin' => false,
             ], 201);
         } catch (ValidationException $e) {
             return response()->json([
@@ -85,6 +87,7 @@ class AuthController extends Controller
                 'access_token' => $token,
                 'token_type' => 'Bearer',
                 'user' => $user,
+                'is_admin' => $user->is_admin, // Include admin status in response
             ]);
         } catch (ValidationException $e) {
             return response()->json([
@@ -108,8 +111,11 @@ class AuthController extends Controller
         try {
             // Ensure the user is authenticated
             if ($request->user()) {
-                $request->user()->currentAccessToken()->delete(); // Delete the current token
-                Log::info('User logged out successfully', ['user_id' => $request->user()->id]);
+                $request->user()->currentAccessToken()->delete();
+                Log::info('User logged out successfully', [
+                    'user_id' => $request->user()->id,
+                    'is_admin' => $request->user()->is_admin
+                ]);
                 return response()->json(['message' => 'Successfully logged out']);
             }
 
@@ -135,11 +141,38 @@ class AuthController extends Controller
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
-            return response()->json(['user' => $user]);
+            return response()->json([
+                'user' => $user,
+                'is_admin' => $user->is_admin // Include admin status
+            ]);
         } catch (\Exception $e) {
             Log::error('User fetch error: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Error fetching user data',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Check if user is an admin.
+     */
+    public function checkAdmin(Request $request)
+    {
+        try {
+            $user = $request->user();
+
+            if (!$user) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+
+            return response()->json([
+                'is_admin' => $user->is_admin
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Admin check error: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Error checking admin status',
                 'error' => $e->getMessage(),
             ], 500);
         }

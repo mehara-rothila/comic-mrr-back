@@ -2,24 +2,47 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Comic extends Model
 {
-    use HasFactory;
-
     protected $fillable = [
         'title',
         'description',
         'author',
         'genre',
-        'image',
+        'category_id',
+        'price',
+        'status',
+        'featured',
+        'image_url',
         'user_id'
     ];
 
-    public function user()
-    {
-        return $this->belongsTo(User::class);
-    }
+    protected $casts = [
+        'featured' => 'boolean',
+        'price' => 'decimal:2',
+        'category_id' => 'integer'
+    ];
+
+    protected $attributes = [
+        'featured' => false,
+        'status' => 'published',
+        'price' => '0.00'
+    ];
+
+   public function setPriceAttribute($value)
+   {
+       $this->attributes['price'] = number_format((float)$value, 2, '.', '');
+   }
+
+   public function getPriceAttribute($value)
+   {
+       return number_format((float)$value, 2, '.', '');
+   }
+
+   public function user()
+   {
+       return $this->belongsTo(User::class);
+   }
 }

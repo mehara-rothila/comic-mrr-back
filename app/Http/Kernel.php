@@ -14,7 +14,6 @@ class Kernel extends HttpKernel
      * @var array<int, class-string|string>
      */
     protected $middleware = [
-        // \App\Http\Middleware\TrustHosts::class,
         \App\Http\Middleware\TrustProxies::class,
         \Illuminate\Http\Middleware\HandleCors::class,
         \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
@@ -40,7 +39,7 @@ class Kernel extends HttpKernel
 
         'api' => [
             \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':60,1',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
     ];
@@ -60,29 +59,9 @@ class Kernel extends HttpKernel
         'can' => \Illuminate\Auth\Middleware\Authorize::class,
         'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
-        'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-    ];
-
-    /**
-     * The priority-sorted list of middleware.
-     *
-     * Forces non-global middleware to always be in the given order.
-     *
-     * @var string[]
-     */
-    protected $middlewarePriority = [
-        \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
-        \Illuminate\Cookie\Middleware\EncryptCookies::class,
-        \Illuminate\Session\Middleware\StartSession::class,
-        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-        \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-        \Illuminate\Routing\Middleware\ThrottleRequests::class,
-        \Illuminate\Routing\Middleware\ThrottleRequestsWithRedis::class,
-        \Illuminate\Contracts\Session\Middleware\AuthenticatesSessions::class,
-        \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        \Illuminate\Auth\Middleware\Authorize::class,
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
     ];
 }
